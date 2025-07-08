@@ -2,12 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Heart, Volume2, VolumeX, X, ExternalLink } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { projects } from './data/projects';
+import type { Project } from './data/projects';
 import { wheelCategories } from './data/categories';
-import { sendDonationWebhook, sendSpinWebhook, sendGetUSDGLOWebhook } from './utils/discord';
+import { sendDonationWebhook, sendSpinWebhook } from './utils/discord';
 import { SpinningWords } from './components/SpinningWords';
 import { CartIcon } from './components/CartIcon';
 import { CartModal } from './components/CartModal';
-import { DailyUnderdog } from './components/DailyUnderdog';
+
 import { useCart } from './contexts/CartContext';
 
 // Chain information for USDGLO
@@ -71,11 +72,47 @@ function App() {
   const [showCart, setShowCart] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [todaysUnderdog, setTodaysUnderdog] = useState<Project | null>(null);
   const wheelRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const usdgloModalRef = useRef<HTMLDivElement>(null);
   const { dispatch } = useCart();
+
+  // Get the last 30 projects (considered "underdogs" - newer/less established)
+  const underdogProjects = projects.slice(-30);
+
+  const getTodaysUnderdog = () => {
+    // Use current date as seed for consistent daily selection
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const seed = dateString.split('-').reduce((acc, part) => acc + parseInt(part), 0);
+    const index = seed % underdogProjects.length;
+    return underdogProjects[index];
+  };
+
+  const formatUnderdogCategory = (project: Project) => {
+    const description = project.description.toLowerCase();
+    if (description.includes('environment') || description.includes('green') || description.includes('climate')) {
+      return '🌱 Environmental';
+    } else if (description.includes('education') || description.includes('learning') || description.includes('academy')) {
+      return '📚 Education';
+    } else if (description.includes('art') || description.includes('creative') || description.includes('music')) {
+      return '🎨 Creative';
+    } else if (description.includes('health') || description.includes('medical') || description.includes('care')) {
+      return '💊 Healthcare';
+    } else if (description.includes('development') || description.includes('tool') || description.includes('platform')) {
+      return '🛠️ Tech/Tools';
+    } else if (description.includes('dao') || description.includes('governance') || description.includes('community')) {
+      return '🏛️ Governance';
+    }
+    return '🌐 Web3';
+  };
+
+  useEffect(() => {
+    const underdog = getTodaysUnderdog();
+    setTodaysUnderdog(underdog);
+  }, []);
 
   useEffect(() => {
     // Create stars
@@ -230,10 +267,7 @@ function App() {
     }
   };
 
-  const handleGetUSDGLOClick = async () => {
-    await sendGetUSDGLOWebhook();
-    setShowUSDGLOInfo(true);
-  };
+
 
   const getRandomProject = (category: string) => {
     const eligibleProjects = category === "ALL" 
@@ -409,12 +443,25 @@ function App() {
       </div>
 
       <div className="flex items-center gap-4 md:gap-6 flex-wrap justify-center">
-        <button
-          onClick={handleGetUSDGLOClick}
-          className="glow-button px-6 md:px-8 py-3 md:py-4 text-base md:text-xl font-bold rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:scale-105 hover:shadow-lg active:scale-95 transition-all shadow-md"
-        >
-          Contribute WIF GloDollar
-        </button>
+        {todaysUnderdog && (
+          <div className="text-center">
+            <a
+              href={todaysUnderdog.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="glow-button px-6 md:px-8 py-3 md:py-4 text-base md:text-xl font-bold rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:scale-105 hover:shadow-lg active:scale-95 transition-all shadow-md group block"
+            >
+              <div className="flex items-center gap-2 justify-center">
+                <span>💎 Daily Underdog</span>
+                <ExternalLink className="w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </a>
+            <div className="mt-2 text-sm text-purple-200">
+              <div className="font-semibold">{todaysUnderdog.name}</div>
+              <div className="text-xs opacity-80">{formatUnderdogCategory(todaysUnderdog)} • Project #{todaysUnderdog.id}/117</div>
+            </div>
+          </div>
+        )}
 
         <button
           onClick={toggleMute}
@@ -570,15 +617,7 @@ function App() {
         </div>
       )}
 
-      <DailyUnderdog onAddToCart={(project) => {
-        dispatch({
-          type: 'ADD_ITEM',
-          payload: {
-            id: project.id,
-            name: project.name,
-          }
-        });
-      }} />
+
 
       <audio
         ref={audioRef}
