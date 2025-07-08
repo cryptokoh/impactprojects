@@ -6,10 +6,10 @@ import type { Project } from './data/projects';
 import { wheelCategories } from './data/categories';
 import { sendDonationWebhook, sendSpinWebhook } from './utils/discord';
 import { SpinningWords } from './components/SpinningWords';
-import { CartIcon } from './components/CartIcon';
-import { CartModal } from './components/CartModal';
+import { DiscoveredProjectsIcon } from './components/DiscoveredProjectsIcon';
+import { DiscoveredProjectsModal } from './components/DiscoveredProjectsModal';
 
-import { useCart } from './contexts/CartContext';
+import { useDiscoveredProjects } from './contexts/DiscoveredProjectsContext';
 
 // Chain information for USDGLO
 const chainInfo = [
@@ -69,7 +69,7 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [showWinner, setShowWinner] = useState(false);
   const [showUSDGLOInfo, setShowUSDGLOInfo] = useState(false);
-  const [showCart, setShowCart] = useState(false);
+  const [showDiscoveredProjects, setShowDiscoveredProjects] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [todaysUnderdog, setTodaysUnderdog] = useState<Project | null>(null);
@@ -77,7 +77,7 @@ function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const usdgloModalRef = useRef<HTMLDivElement>(null);
-  const { dispatch } = useCart();
+  const { dispatch } = useDiscoveredProjects();
 
   // Get the last 30 projects (considered "underdogs" - newer/less established)
   const underdogProjects = projects.slice(-30);
@@ -231,14 +231,16 @@ function App() {
     try {
       await sendDonationWebhook(project);
       
-      // Add to cart
+      // Add to discovered projects
       dispatch({
-        type: 'ADD_ITEM',
+        type: 'ADD_PROJECT',
         payload: {
           id: project.id,
           name: project.name,
-          price: 10, // Example price, adjust as needed
-          quantity: 1
+          description: project.description,
+          link: project.link,
+          discoveredAt: Date.now(),
+          category: formatUnderdogCategory(project)
         }
       });
 
@@ -252,7 +254,7 @@ function App() {
       document.body.removeChild(tempLink);
       
       setShowModal(false);
-      setShowCart(true);
+      setShowDiscoveredProjects(true);
     } catch (error) {
       console.error('Failed to process donation click:', error);
       // Still try to open the link even if the webhook fails
@@ -334,7 +336,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 flex flex-col items-center justify-center p-4 md:p-8">
       <div className="fixed top-4 right-4 z-40">
-        <CartIcon onClick={() => setShowCart(true)} />
+        <DiscoveredProjectsIcon onClick={() => setShowDiscoveredProjects(true)} />
       </div>
 
       <div className="text-center mb-8 md:mb-12">
@@ -475,7 +477,7 @@ function App() {
         </button>
       </div>
 
-      <CartModal isOpen={showCart} onClose={() => setShowCart(false)} />
+      <DiscoveredProjectsModal isOpen={showDiscoveredProjects} onClose={() => setShowDiscoveredProjects(false)} />
 
       {selectedProject && showModal && (
         <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm overflow-y-auto">
@@ -507,7 +509,7 @@ function App() {
                   onClick={() => handleDonateClick(selectedProject)}
                   className="donate-button w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full hover:scale-105 hover:shadow-lg transition-all font-bold text-lg shadow-md"
                 >
-                  Discover now!
+                  🚀 Add to Discovered!
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
