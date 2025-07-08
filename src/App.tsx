@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Heart, Volume2, VolumeX, X, ExternalLink } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { projects } from './data/projects';
+import type { Project } from './data/projects';
 import { wheelCategories } from './data/categories';
-import { sendDonationWebhook, sendSpinWebhook, sendGetUSDGLOWebhook } from './utils/discord';
+import { sendDonationWebhook, sendSpinWebhook } from './utils/discord';
 import { SpinningWords } from './components/SpinningWords';
-import { CartIcon } from './components/CartIcon';
-import { CartModal } from './components/CartModal';
-import { useCart } from './contexts/CartContext';
+import { DiscoveredProjectsIcon } from './components/DiscoveredProjectsIcon';
+import { DiscoveredProjectsModal } from './components/DiscoveredProjectsModal';
+
+import { useDiscoveredProjects } from './contexts/DiscoveredProjectsContext';
 
 // Chain information for USDGLO
 const chainInfo = [
@@ -67,14 +69,52 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [showWinner, setShowWinner] = useState(false);
   const [showUSDGLOInfo, setShowUSDGLOInfo] = useState(false);
-  const [showCart, setShowCart] = useState(false);
+  const [showDiscoveredProjects, setShowDiscoveredProjects] = useState(false);
+  const [showDailyUnderdogModal, setShowDailyUnderdogModal] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [todaysUnderdog, setTodaysUnderdog] = useState<Project | null>(null);
   const wheelRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const usdgloModalRef = useRef<HTMLDivElement>(null);
-  const { dispatch } = useCart();
+  const dailyUnderdogModalRef = useRef<HTMLDivElement>(null);
+  const { dispatch } = useDiscoveredProjects();
+
+  // Get the last 30 projects (considered "underdogs" - newer/less established)
+  const underdogProjects = projects.slice(-30);
+
+  const getTodaysUnderdog = () => {
+    // Use current date as seed for consistent daily selection
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const seed = dateString.split('-').reduce((acc, part) => acc + parseInt(part), 0);
+    const index = seed % underdogProjects.length;
+    return underdogProjects[index];
+  };
+
+  const formatUnderdogCategory = (project: Project) => {
+    const description = project.description.toLowerCase();
+    if (description.includes('environment') || description.includes('green') || description.includes('climate')) {
+      return '🌱 Environmental';
+    } else if (description.includes('education') || description.includes('learning') || description.includes('academy')) {
+      return '📚 Education';
+    } else if (description.includes('art') || description.includes('creative') || description.includes('music')) {
+      return '🎨 Creative';
+    } else if (description.includes('health') || description.includes('medical') || description.includes('care')) {
+      return '💊 Healthcare';
+    } else if (description.includes('development') || description.includes('tool') || description.includes('platform')) {
+      return '🛠️ Tech/Tools';
+    } else if (description.includes('dao') || description.includes('governance') || description.includes('community')) {
+      return '🏛️ Governance';
+    }
+    return '🌐 Web3';
+  };
+
+  useEffect(() => {
+    const underdog = getTodaysUnderdog();
+    setTodaysUnderdog(underdog);
+  }, []);
 
   useEffect(() => {
     // Create stars
@@ -130,10 +170,27 @@ function App() {
   }, [showModal]);
 
   useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dailyUnderdogModalRef.current && !dailyUnderdogModalRef.current.contains(event.target as Node)) {
+        setShowDailyUnderdogModal(false);
+      }
+    };
+
+    if (showDailyUnderdogModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDailyUnderdogModal]);
+
+  useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setShowModal(false);
         setShowUSDGLOInfo(false);
+        setShowDailyUnderdogModal(false);
       }
     };
 
@@ -189,50 +246,45 @@ function App() {
     });
   };
 
-  const handleDonateClick = async (project: Project) => {
+  const handleAddToDraws = async (project: Project) => {
     try {
       await sendDonationWebhook(project);
       
-      // Add to cart
+      // Add to discovered projects
       dispatch({
-        type: 'ADD_ITEM',
+        type: 'ADD_PROJECT',
         payload: {
           id: project.id,
           name: project.name,
-          price: 10, // Example price, adjust as needed
-          quantity: 1
+          description: project.description,
+          link: project.link,
+          discoveredAt: Date.now(),
+          category: formatUnderdogCategory(project)
         }
       });
-
-      // Create and click a temporary link to ensure it works on mobile
-      const tempLink = document.createElement('a');
-      tempLink.href = project.link;
-      tempLink.target = '_blank';
-      tempLink.rel = 'noopener noreferrer';
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      document.body.removeChild(tempLink);
       
       setShowModal(false);
-      setShowCart(true);
+      setShowDiscoveredProjects(true);
     } catch (error) {
-      console.error('Failed to process donation click:', error);
-      // Still try to open the link even if the webhook fails
-      const tempLink = document.createElement('a');
-      tempLink.href = project.link;
-      tempLink.target = '_blank';
-      tempLink.rel = 'noopener noreferrer';
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      document.body.removeChild(tempLink);
+      console.error('Failed to process add to draws:', error);
+      // Still add to discovered projects even if webhook fails
+      dispatch({
+        type: 'ADD_PROJECT',
+        payload: {
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          link: project.link,
+          discoveredAt: Date.now(),
+          category: formatUnderdogCategory(project)
+        }
+      });
       setShowModal(false);
+      setShowDiscoveredProjects(true);
     }
   };
 
-  const handleGetUSDGLOClick = async () => {
-    await sendGetUSDGLOWebhook();
-    setShowUSDGLOInfo(true);
-  };
+
 
   const getRandomProject = (category: string) => {
     const eligibleProjects = category === "ALL" 
@@ -299,7 +351,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 flex flex-col items-center justify-center p-4 md:p-8">
       <div className="fixed top-4 right-4 z-40">
-        <CartIcon onClick={() => setShowCart(true)} />
+        <DiscoveredProjectsIcon onClick={() => setShowDiscoveredProjects(true)} />
       </div>
 
       <div className="text-center mb-8 md:mb-12">
@@ -310,7 +362,7 @@ function App() {
           </span>
         </h1>
         <p className="text-lg md:text-2xl text-purple-200 mb-2 px-4 md:px-0">
-          Spin the wheel to discover an amazing positive impact project! Contribute $USDGLO to a lucky project in the "Loving on Public Goods" Giveth QF Round 
+          Spin the wheel to discover an amazing positive impact project! DISCOVER PROJECTS beyond the well-marketed mainstream - explore hidden gems making real change 
         </p>
         <a
           href="https://giveth.io/qf/all"
@@ -407,34 +459,120 @@ function App() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 md:gap-6 flex-wrap justify-center">
-        <button
-          onClick={handleGetUSDGLOClick}
-          className="glow-button px-6 md:px-8 py-3 md:py-4 text-base md:text-xl font-bold rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:scale-105 hover:shadow-lg active:scale-95 transition-all shadow-md"
-        >
-          Contribute WIF GloDollar
-        </button>
-
-        <button
-          onClick={toggleMute}
-          className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-all shadow-md"
-        >
-          {isMuted ? (
-            <VolumeX className="w-5 h-5 md:w-6 md:h-6 text-white" />
-          ) : (
-            <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
-          )}
-        </button>
+      <div className="flex justify-center w-full mb-8 md:mb-12">
+        {todaysUnderdog && (
+          <div className="text-center">
+            <button
+              onClick={() => setShowDailyUnderdogModal(true)}
+              className="px-6 md:px-8 py-3 md:py-4 text-base md:text-xl font-bold rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg transition-shadow shadow-md mx-auto block"
+            >
+              <div className="flex items-center gap-2 justify-center">
+                <span>💎 Daily Underdog</span>
+              </div>
+            </button>
+            <div className="mt-2 text-sm text-purple-200">
+              <div className="font-semibold">{todaysUnderdog.name}</div>
+              <div className="text-xs opacity-80">{formatUnderdogCategory(todaysUnderdog)} • Project #{todaysUnderdog.id}/117</div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <CartModal isOpen={showCart} onClose={() => setShowCart(false)} />
+      {/* Sound button - fixed to lower right corner */}
+      <button
+        onClick={toggleMute}
+        className="fixed bottom-20 right-4 md:bottom-24 md:right-6 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-all shadow-md z-40"
+      >
+        {isMuted ? (
+          <VolumeX className="w-5 h-5 md:w-6 md:h-6 text-white" />
+        ) : (
+          <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
+        )}
+      </button>
+
+      <DiscoveredProjectsModal isOpen={showDiscoveredProjects} onClose={() => setShowDiscoveredProjects(false)} />
+
+      {/* Daily Underdog Modal */}
+      {todaysUnderdog && showDailyUnderdogModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm overflow-y-auto">
+          <div className="min-h-full px-4 py-6 md:py-12 flex items-center justify-center">
+            <div 
+              ref={dailyUnderdogModalRef}
+              className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-8 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 glow-effect w-full max-w-md md:max-w-lg relative my-auto"
+            >
+              <button
+                onClick={() => setShowDailyUnderdogModal(false)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+
+              <div className="text-center">
+                <div className="mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mb-4">
+                    <span className="text-3xl">💎</span>
+                  </div>
+                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Daily Underdog</h2>
+                  <p className="text-purple-200">Today's featured hidden gem!</p>
+                </div>
+
+                <div className="bg-purple-800/50 rounded-xl p-6 mb-6 backdrop-blur-sm border border-purple-600/20">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <span className="text-xs bg-purple-500/30 text-purple-200 px-3 py-1 rounded-full">
+                      {formatUnderdogCategory(todaysUnderdog)}
+                    </span>
+                    <span className="text-xs bg-yellow-500/30 text-yellow-200 px-3 py-1 rounded-full">
+                      Project #{todaysUnderdog.id}/117
+                    </span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl text-white mb-4 font-semibold">{todaysUnderdog.name}</h3>
+                  <p className="text-base md:text-lg text-purple-200 leading-relaxed">{todaysUnderdog.description}</p>
+                </div>
+
+                <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl p-4 mb-6 border border-yellow-500/30">
+                  <p className="text-yellow-100 text-sm">
+                    <strong>🌟 Why it's today's underdog:</strong><br/>
+                    This project represents the hidden gems that don't get mainstream attention but are making real impact. Every day we highlight one of these lesser-known projects!
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center gap-4">
+                  <a
+                    href={todaysUnderdog.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full hover:scale-105 hover:shadow-lg transition-all font-bold text-lg shadow-md text-center block flex items-center justify-center gap-2"
+                  >
+                    🌟 Visit Project Page
+                    <ExternalLink className="w-5 h-5" />
+                  </a>
+
+                  <button
+                    onClick={() => handleAddToDraws(todaysUnderdog)}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full hover:scale-105 hover:shadow-lg transition-all font-bold text-lg shadow-md"
+                  >
+                    📝 Add to my list of Draws
+                  </button>
+                  <button
+                    onClick={() => setShowDailyUnderdogModal(false)}
+                    className="text-purple-300 hover:text-purple-200 transition-colors text-sm"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedProject && showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-30 bg-black/40 backdrop-blur-sm p-4">
-          <div 
-            ref={modalRef}
-            className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-10 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 glow-effect max-w-[90vw] md:max-w-lg relative"
-          >
+        <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm overflow-y-auto">
+          <div className="min-h-full px-4 py-6 md:py-12 flex items-center justify-center">
+            <div 
+              ref={modalRef}
+              className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-10 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 glow-effect w-full max-w-md md:max-w-lg relative my-auto"
+            >
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all"
@@ -444,40 +582,62 @@ function App() {
 
             <div className="text-center">
               <div className="mb-6">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">🎉 Congratulations! 🎉</h2>
-                <p className="text-purple-200">You've discovered an amazing project!</p>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">🎯 You landed on...</h2>
+                <p className="text-purple-200">An amazing project to explore!</p>
               </div>
 
               <div className="bg-purple-800/50 rounded-xl p-6 mb-6 backdrop-blur-sm border border-purple-600/20">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <span className="text-xs bg-purple-500/30 text-purple-200 px-3 py-1 rounded-full">
+                    {formatUnderdogCategory(selectedProject)}
+                  </span>
+                </div>
                 <h3 className="text-2xl md:text-3xl text-white mb-3 font-semibold">{selectedProject.name}</h3>
                 <p className="text-base md:text-lg text-purple-200">{selectedProject.description}</p>
               </div>
 
+              <div className="bg-gradient-to-r from-purple-700/30 to-pink-700/30 rounded-xl p-4 mb-6 border border-purple-500/20">
+                <p className="text-purple-100 text-sm">
+                  💡 <strong>What would you like to do?</strong><br/>
+                  Visit the project page to learn more, or add it to your draws list to keep track of projects you've discovered!
+                </p>
+              </div>
+
               <div className="flex flex-col items-center gap-4">
+                <a
+                  href={selectedProject.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full hover:scale-105 hover:shadow-lg transition-all font-bold text-lg shadow-md text-center block"
+                >
+                  🌟 Visit Project Page
+                </a>
                 <button
-                  onClick={() => handleDonateClick(selectedProject)}
+                  onClick={() => handleAddToDraws(selectedProject)}
                   className="donate-button w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full hover:scale-105 hover:shadow-lg transition-all font-bold text-lg shadow-md"
                 >
-                  Discover now!
+                  📝 Add to my list of Draws
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
                   className="text-purple-300 hover:text-purple-200 transition-colors text-sm"
                 >
-                  Maybe Later
+                  ⏭️ Skip this draw
                 </button>
               </div>
             </div>
           </div>
         </div>
+        </div>
       )}
 
       {showUSDGLOInfo && (
-        <div className="fixed inset-0 flex items-center justify-center z-40 bg-black/40 backdrop-blur-sm p-4">
-          <div
-            ref={usdgloModalRef}
-            className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-8 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 max-w-[90vw] md:max-w-2xl relative overflow-y-auto max-h-[90vh]"
-          >
+        <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm overflow-y-auto">
+          <div className="min-h-full px-4 py-6 md:py-12 flex items-center justify-center">
+            <div
+              ref={usdgloModalRef}
+              className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-8 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 w-full max-w-sm md:max-w-2xl relative my-auto"
+            >
             <button
               onClick={() => setShowUSDGLOInfo(false)}
               className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all"
@@ -567,7 +727,10 @@ function App() {
             </div>
           </div>
         </div>
+        </div>
       )}
+
+
 
       <audio
         ref={audioRef}
@@ -576,14 +739,23 @@ function App() {
       />
 
       <footer className="fixed bottom-4 left-0 right-0 text-center text-purple-200 text-sm">
-        <a
-          href="https://giveth.handprotocol.org"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 hover:text-white transition-colors"
-        >
-          Made with <Heart className="w-4 h-4 text-pink-500" fill="currentColor" /> by Hand Protocol
-        </a>
+        <div className="flex justify-center items-center gap-4">
+          <a
+            href="https://giveth.handprotocol.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 hover:text-white transition-colors"
+          >
+            Made with <Heart className="w-4 h-4 text-pink-500" fill="currentColor" /> by Hand Protocol
+          </a>
+          <span className="text-purple-400">•</span>
+          <a
+            href="/admin"
+            className="text-purple-400 hover:text-purple-200 transition-colors text-xs"
+          >
+            Admin
+          </a>
+        </div>
       </footer>
     </div>
   );

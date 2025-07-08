@@ -1,13 +1,16 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
 import './index.css';
-import { CartProvider } from './contexts/CartContext';
+import { DiscoveredProjectsProvider } from './contexts/DiscoveredProjectsContext';
+import { AdminProvider } from './contexts/AdminContext';
+import { AppRouter } from './components/AppRouter';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <CartProvider>
-      <App />
-    </CartProvider>
+    <AdminProvider>
+      <DiscoveredProjectsProvider>
+        <AppRouter />
+      </DiscoveredProjectsProvider>
+    </AdminProvider>
   </StrictMode>
 );
