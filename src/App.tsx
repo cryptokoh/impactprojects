@@ -70,6 +70,7 @@ function App() {
   const [showWinner, setShowWinner] = useState(false);
   const [showUSDGLOInfo, setShowUSDGLOInfo] = useState(false);
   const [showDiscoveredProjects, setShowDiscoveredProjects] = useState(false);
+  const [showDailyUnderdogModal, setShowDailyUnderdogModal] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [todaysUnderdog, setTodaysUnderdog] = useState<Project | null>(null);
@@ -77,6 +78,7 @@ function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const usdgloModalRef = useRef<HTMLDivElement>(null);
+  const dailyUnderdogModalRef = useRef<HTMLDivElement>(null);
   const { dispatch } = useDiscoveredProjects();
 
   // Get the last 30 projects (considered "underdogs" - newer/less established)
@@ -168,10 +170,27 @@ function App() {
   }, [showModal]);
 
   useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dailyUnderdogModalRef.current && !dailyUnderdogModalRef.current.contains(event.target as Node)) {
+        setShowDailyUnderdogModal(false);
+      }
+    };
+
+    if (showDailyUnderdogModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDailyUnderdogModal]);
+
+  useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setShowModal(false);
         setShowUSDGLOInfo(false);
+        setShowDailyUnderdogModal(false);
       }
     };
 
@@ -343,7 +362,7 @@ function App() {
           </span>
         </h1>
         <p className="text-lg md:text-2xl text-purple-200 mb-2 px-4 md:px-0">
-          Spin the wheel to discover an amazing positive impact project! Contribute $USDGLO to a lucky project in the "Loving on Public Goods" Giveth QF Round 
+          Spin the wheel to discover an amazing positive impact project! DISCOVER PROJECTS beyond the well-marketed mainstream - explore hidden gems making real change 
         </p>
         <a
           href="https://giveth.io/qf/all"
@@ -440,40 +459,112 @@ function App() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 md:gap-6 flex-wrap justify-center">
+      <div className="flex justify-center w-full mb-8 md:mb-12">
         {todaysUnderdog && (
           <div className="text-center">
-            <a
-              href={todaysUnderdog.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="glow-button px-6 md:px-8 py-3 md:py-4 text-base md:text-xl font-bold rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:scale-105 hover:shadow-lg active:scale-95 transition-all shadow-md group block"
+            <button
+              onClick={() => setShowDailyUnderdogModal(true)}
+              className="px-6 md:px-8 py-3 md:py-4 text-base md:text-xl font-bold rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg transition-shadow shadow-md mx-auto block"
             >
               <div className="flex items-center gap-2 justify-center">
                 <span>💎 Daily Underdog</span>
-                <ExternalLink className="w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity" />
               </div>
-            </a>
+            </button>
             <div className="mt-2 text-sm text-purple-200">
               <div className="font-semibold">{todaysUnderdog.name}</div>
               <div className="text-xs opacity-80">{formatUnderdogCategory(todaysUnderdog)} • Project #{todaysUnderdog.id}/117</div>
             </div>
           </div>
         )}
-
-        <button
-          onClick={toggleMute}
-          className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-all shadow-md"
-        >
-          {isMuted ? (
-            <VolumeX className="w-5 h-5 md:w-6 md:h-6 text-white" />
-          ) : (
-            <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
-          )}
-        </button>
       </div>
 
+      {/* Sound button - fixed to lower right corner */}
+      <button
+        onClick={toggleMute}
+        className="fixed bottom-20 right-4 md:bottom-24 md:right-6 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-all shadow-md z-40"
+      >
+        {isMuted ? (
+          <VolumeX className="w-5 h-5 md:w-6 md:h-6 text-white" />
+        ) : (
+          <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
+        )}
+      </button>
+
       <DiscoveredProjectsModal isOpen={showDiscoveredProjects} onClose={() => setShowDiscoveredProjects(false)} />
+
+      {/* Daily Underdog Modal */}
+      {todaysUnderdog && showDailyUnderdogModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm overflow-y-auto">
+          <div className="min-h-full px-4 py-6 md:py-12 flex items-center justify-center">
+            <div 
+              ref={dailyUnderdogModalRef}
+              className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-8 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 glow-effect w-full max-w-md md:max-w-lg relative my-auto"
+            >
+              <button
+                onClick={() => setShowDailyUnderdogModal(false)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+
+              <div className="text-center">
+                <div className="mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mb-4">
+                    <span className="text-3xl">💎</span>
+                  </div>
+                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Daily Underdog</h2>
+                  <p className="text-purple-200">Today's featured hidden gem!</p>
+                </div>
+
+                <div className="bg-purple-800/50 rounded-xl p-6 mb-6 backdrop-blur-sm border border-purple-600/20">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <span className="text-xs bg-purple-500/30 text-purple-200 px-3 py-1 rounded-full">
+                      {formatUnderdogCategory(todaysUnderdog)}
+                    </span>
+                    <span className="text-xs bg-yellow-500/30 text-yellow-200 px-3 py-1 rounded-full">
+                      Project #{todaysUnderdog.id}/117
+                    </span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl text-white mb-4 font-semibold">{todaysUnderdog.name}</h3>
+                  <p className="text-base md:text-lg text-purple-200 leading-relaxed">{todaysUnderdog.description}</p>
+                </div>
+
+                <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl p-4 mb-6 border border-yellow-500/30">
+                  <p className="text-yellow-100 text-sm">
+                    <strong>🌟 Why it's today's underdog:</strong><br/>
+                    This project represents the hidden gems that don't get mainstream attention but are making real impact. Every day we highlight one of these lesser-known projects!
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center gap-4">
+                  <a
+                    href={todaysUnderdog.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full hover:scale-105 hover:shadow-lg transition-all font-bold text-lg shadow-md text-center block flex items-center justify-center gap-2"
+                  >
+                    🌟 Visit Project Page
+                    <ExternalLink className="w-5 h-5" />
+                  </a>
+
+                  <button
+                    onClick={() => handleAddToDraws(todaysUnderdog)}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full hover:scale-105 hover:shadow-lg transition-all font-bold text-lg shadow-md"
+                  >
+                    📝 Add to my list of Draws
+                  </button>
+                  <button
+                    onClick={() => setShowDailyUnderdogModal(false)}
+                    className="text-purple-300 hover:text-purple-200 transition-colors text-sm"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedProject && showModal && (
         <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm overflow-y-auto">
@@ -648,14 +739,23 @@ function App() {
       />
 
       <footer className="fixed bottom-4 left-0 right-0 text-center text-purple-200 text-sm">
-        <a
-          href="https://giveth.handprotocol.org"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 hover:text-white transition-colors"
-        >
-          Made with <Heart className="w-4 h-4 text-pink-500" fill="currentColor" /> by Hand Protocol
-        </a>
+        <div className="flex justify-center items-center gap-4">
+          <a
+            href="https://giveth.handprotocol.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 hover:text-white transition-colors"
+          >
+            Made with <Heart className="w-4 h-4 text-pink-500" fill="currentColor" /> by Hand Protocol
+          </a>
+          <span className="text-purple-400">•</span>
+          <a
+            href="/admin"
+            className="text-purple-400 hover:text-purple-200 transition-colors text-xs"
+          >
+            Admin
+          </a>
+        </div>
       </footer>
     </div>
   );

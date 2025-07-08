@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ExternalLink, Trash2, Calendar, Sparkles } from 'lucide-react';
+import { X, ExternalLink, Trash2, Calendar, Sparkles, Download } from 'lucide-react';
 import { useDiscoveredProjects } from '../contexts/DiscoveredProjectsContext';
 
 interface DiscoveredProjectsModalProps {
@@ -45,6 +45,45 @@ export const DiscoveredProjectsModal: React.FC<DiscoveredProjectsModalProps> = (
       return '🏛️ Governance';
     }
     return '🌐 Web3';
+  };
+
+  const downloadMarkdown = () => {
+    if (state.projects.length === 0) return;
+
+    const currentDate = new Date().toLocaleDateString();
+    let markdown = `# My Discovered Projects\n\n*Downloaded on ${currentDate}*\n\n`;
+    markdown += `I've discovered ${state.projects.length} amazing project${state.projects.length !== 1 ? 's' : ''} using the Project Spin wheel! 🎯\n\n`;
+    markdown += `---\n\n`;
+
+    // Sort by discovery date (newest first)
+    const sortedForDownload = [...state.projects].sort((a, b) => b.discoveredAt - a.discoveredAt);
+    
+    sortedForDownload.forEach((project, index) => {
+      const discoveryDate = new Date(project.discoveredAt).toLocaleDateString();
+      const category = formatUnderdogCategory(project.description);
+      
+      markdown += `## ${index + 1}. ${project.name}\n\n`;
+      markdown += `**Category:** ${category}\n\n`;
+      markdown += `**Discovered:** ${discoveryDate}\n\n`;
+      markdown += `**Description:** ${project.description}\n\n`;
+      markdown += `**Project Link:** [Visit Project](${project.link})\n\n`;
+      markdown += `---\n\n`;
+    });
+
+    markdown += `## About Project Spin\n\n`;
+    markdown += `These projects were discovered using Project Spin - a unique way to discover amazing positive impact projects beyond the well-marketed mainstream. Each spin reveals hidden gems making real change in the world!\n\n`;
+    markdown += `*Keep spinning to discover more projects at [Project Spin](${window.location.origin})*\n`;
+
+    // Create and download the file
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `my-discovered-projects-${new Date().toISOString().split('T')[0]}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Sort by most recently discovered
@@ -128,12 +167,21 @@ export const DiscoveredProjectsModal: React.FC<DiscoveredProjectsModalProps> = (
                   <span className="text-sm text-purple-300">
                     {sortedProjects.length} project{sortedProjects.length !== 1 ? 's' : ''} discovered
                   </span>
-                  <button
-                    onClick={() => dispatch({ type: 'CLEAR_ALL' })}
-                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                  >
-                    Clear all
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={downloadMarkdown}
+                      className="flex items-center gap-1 px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-xs font-medium rounded-lg transition-all hover:scale-105"
+                    >
+                      <Download className="w-3 h-3" />
+                      Download MD
+                    </button>
+                    <button
+                      onClick={() => dispatch({ type: 'CLEAR_ALL' })}
+                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  </div>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-purple-400">
