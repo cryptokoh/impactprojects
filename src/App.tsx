@@ -478,11 +478,12 @@ function App() {
       <CartModal isOpen={showCart} onClose={() => setShowCart(false)} />
 
       {selectedProject && showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-30 bg-black/40 backdrop-blur-sm p-4">
-          <div 
-            ref={modalRef}
-            className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-10 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 glow-effect max-w-[90vw] md:max-w-lg relative"
-          >
+        <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm overflow-y-auto">
+          <div className="min-h-full px-4 py-6 md:py-12 flex items-center justify-center">
+            <div 
+              ref={modalRef}
+              className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-10 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 glow-effect w-full max-w-md md:max-w-lg relative my-auto"
+            >
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all"
@@ -518,14 +519,16 @@ function App() {
             </div>
           </div>
         </div>
+        </div>
       )}
 
       {showUSDGLOInfo && (
-        <div className="fixed inset-0 flex items-center justify-center z-40 bg-black/40 backdrop-blur-sm p-4">
-          <div
-            ref={usdgloModalRef}
-            className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-8 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 max-w-[90vw] md:max-w-2xl relative overflow-y-auto max-h-[90vh]"
-          >
+        <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm overflow-y-auto">
+          <div className="min-h-full px-4 py-6 md:py-12 flex items-center justify-center">
+            <div
+              ref={usdgloModalRef}
+              className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 md:p-8 rounded-2xl transform animate-fade-in shadow-2xl border border-purple-500/30 w-full max-w-sm md:max-w-2xl relative my-auto"
+            >
             <button
               onClick={() => setShowUSDGLOInfo(false)}
               className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all"
@@ -614,6 +617,7 @@ function App() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       )}
 

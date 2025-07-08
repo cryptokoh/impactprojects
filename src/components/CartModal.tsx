@@ -21,8 +21,9 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 rounded-2xl shadow-2xl border border-purple-500/30 w-full max-w-md m-4">
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm overflow-y-auto">
+      <div className="min-h-full px-4 py-6 md:py-12 flex items-center justify-center">
+        <div className="bg-gradient-to-br from-purple-900 to-purple-800 p-6 rounded-2xl shadow-2xl border border-purple-500/30 w-full max-w-md my-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-white">Your Cart</h2>
           <button
@@ -92,6 +93,7 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose }) => {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   );

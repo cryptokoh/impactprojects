@@ -2,6 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile viewport fixes */
+@supports (height: 100dvh) {
+  .min-h-full {
+    min-height: 100dvh;
+  }
+}
+
+/* Prevent horizontal scrolling */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Mobile touch improvements */
+@media (max-width: 768px) {
+  /* Improve modal touch scrolling */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* Ensure modals are accessible above mobile keyboards */
+  .fixed.inset-0 {
+    padding-bottom: env(keyboard-inset-height, 0);
+  }
+  
+  /* Better touch targets on mobile */
+  button, a {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}
+
 /* Custom scrollbar styling */
 ::-webkit-scrollbar {
   width: 10px;
