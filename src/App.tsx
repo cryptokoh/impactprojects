@@ -7,6 +7,7 @@ import { sendDonationWebhook, sendSpinWebhook, sendGetUSDGLOWebhook } from './ut
 import { SpinningWords } from './components/SpinningWords';
 import { CartIcon } from './components/CartIcon';
 import { CartModal } from './components/CartModal';
+import { DailyUnderdog } from './components/DailyUnderdog';
 import { useCart } from './contexts/CartContext';
 
 // Chain information for USDGLO
@@ -568,6 +569,16 @@ function App() {
           </div>
         </div>
       )}
+
+      <DailyUnderdog onAddToCart={(project) => {
+        dispatch({
+          type: 'ADD_ITEM',
+          payload: {
+            id: project.id,
+            name: project.name,
+          }
+        });
+      }} />
 
       <audio
         ref={audioRef}
