@@ -80,8 +80,28 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 const loadCartFromStorage = (): CartState => {
   try {
     const savedCart = localStorage.getItem('cart');
-    return savedCart ? JSON.parse(savedCart) : { items: [], total: 0 };
+    if (!savedCart) return { items: [], total: 0 };
+    
+    const parsed = JSON.parse(savedCart);
+    
+    // Validate and clean up cart items
+    const validItems = parsed.items?.filter((item: any) => 
+      item && 
+      typeof item.id === 'string' && 
+      typeof item.name === 'string' && 
+      typeof item.price === 'number' && 
+      typeof item.quantity === 'number'
+    ) || [];
+    
+    // Recalculate total from valid items
+    const total = validItems.reduce((sum: number, item: CartItem) => 
+      sum + (item.price * item.quantity), 0
+    );
+    
+    return { items: validItems, total };
   } catch {
+    // Clear invalid cart data
+    localStorage.removeItem('cart');
     return { items: [], total: 0 };
   }
 };

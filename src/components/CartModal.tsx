@@ -45,7 +45,7 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose }) => {
                 >
                   <div className="flex-1">
                     <h3 className="text-white font-medium">{item.name}</h3>
-                    <p className="text-purple-200">${item.price.toFixed(2)}</p>
+                    <p className="text-purple-200">${(item.price || 0).toFixed(2)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -74,7 +74,7 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose }) => {
             <div className="border-t border-purple-600/30 pt-4">
               <div className="flex justify-between text-white mb-4">
                 <span className="font-medium">Total:</span>
-                <span className="font-bold">${state.total.toFixed(2)}</span>
+                <span className="font-bold">${(state.total || 0).toFixed(2)}</span>
               </div>
               <div className="flex gap-3">
                 <button
