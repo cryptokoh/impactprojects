@@ -227,7 +227,7 @@ function App() {
     });
   };
 
-  const handleDonateClick = async (project: Project) => {
+  const handleAddToDraws = async (project: Project) => {
     try {
       await sendDonationWebhook(project);
       
@@ -243,29 +243,25 @@ function App() {
           category: formatUnderdogCategory(project)
         }
       });
-
-      // Create and click a temporary link to ensure it works on mobile
-      const tempLink = document.createElement('a');
-      tempLink.href = project.link;
-      tempLink.target = '_blank';
-      tempLink.rel = 'noopener noreferrer';
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      document.body.removeChild(tempLink);
       
       setShowModal(false);
       setShowDiscoveredProjects(true);
     } catch (error) {
-      console.error('Failed to process donation click:', error);
-      // Still try to open the link even if the webhook fails
-      const tempLink = document.createElement('a');
-      tempLink.href = project.link;
-      tempLink.target = '_blank';
-      tempLink.rel = 'noopener noreferrer';
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      document.body.removeChild(tempLink);
+      console.error('Failed to process add to draws:', error);
+      // Still add to discovered projects even if webhook fails
+      dispatch({
+        type: 'ADD_PROJECT',
+        payload: {
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          link: project.link,
+          discoveredAt: Date.now(),
+          category: formatUnderdogCategory(project)
+        }
+      });
       setShowModal(false);
+      setShowDiscoveredProjects(true);
     }
   };
 
@@ -495,27 +491,47 @@ function App() {
 
             <div className="text-center">
               <div className="mb-6">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">🎉 Congratulations! 🎉</h2>
-                <p className="text-purple-200">You've discovered an amazing project!</p>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">🎯 You landed on...</h2>
+                <p className="text-purple-200">An amazing project to explore!</p>
               </div>
 
               <div className="bg-purple-800/50 rounded-xl p-6 mb-6 backdrop-blur-sm border border-purple-600/20">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <span className="text-xs bg-purple-500/30 text-purple-200 px-3 py-1 rounded-full">
+                    {formatUnderdogCategory(selectedProject)}
+                  </span>
+                </div>
                 <h3 className="text-2xl md:text-3xl text-white mb-3 font-semibold">{selectedProject.name}</h3>
                 <p className="text-base md:text-lg text-purple-200">{selectedProject.description}</p>
               </div>
 
+              <div className="bg-gradient-to-r from-purple-700/30 to-pink-700/30 rounded-xl p-4 mb-6 border border-purple-500/20">
+                <p className="text-purple-100 text-sm">
+                  💡 <strong>What would you like to do?</strong><br/>
+                  Visit the project page to learn more, or add it to your draws list to keep track of projects you've discovered!
+                </p>
+              </div>
+
               <div className="flex flex-col items-center gap-4">
+                <a
+                  href={selectedProject.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full hover:scale-105 hover:shadow-lg transition-all font-bold text-lg shadow-md text-center block"
+                >
+                  🌟 Visit Project Page
+                </a>
                 <button
-                  onClick={() => handleDonateClick(selectedProject)}
+                  onClick={() => handleAddToDraws(selectedProject)}
                   className="donate-button w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full hover:scale-105 hover:shadow-lg transition-all font-bold text-lg shadow-md"
                 >
-                  🚀 Add to Discovered!
+                  📝 Add to my list of Draws
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
                   className="text-purple-300 hover:text-purple-200 transition-colors text-sm"
                 >
-                  Maybe Later
+                  ⏭️ Skip this draw
                 </button>
               </div>
             </div>
